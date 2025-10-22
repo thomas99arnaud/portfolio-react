@@ -1,8 +1,11 @@
+// components/ZoneC/ProjectsGrid.jsx
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { Github, ExternalLink, Filter, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-/* --------- UI helpers --------- */
+/* -----------------------------------------
+   UI helpers
+------------------------------------------ */
 function Pill({ active, children, onClick }) {
   return (
     <button
@@ -16,7 +19,76 @@ function Pill({ active, children, onClick }) {
   );
 }
 
-/* --------- Modal --------- */
+/* -----------------------------------------
+   Utils sécurisés
+------------------------------------------ */
+const isNonEmptyArray = (v) => Array.isArray(v) && v.length > 0;
+const asArray = (v) => (Array.isArray(v) ? v : v == null ? [] : [v]);
+
+/* -----------------------------------------
+   Bullets hiérarchiques robustes
+   Accepte :
+   - ["point", ...]
+   - [{ title, items: [...] }, ...]
+   - Tableaux imbriqués, mélanges, etc.
+------------------------------------------ */
+function renderBulletItems(items, depth = 0) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+
+  // On limite à 3 niveaux pour garder une bonne lisibilité
+  const listStyleByDepth = [
+    "list-disc pl-5 space-y-1.5",
+    "list-[circle] pl-5 space-y-1",
+    "list-[square] pl-5 space-y-1",
+  ];
+  const listClass = listStyleByDepth[Math.min(depth, listStyleByDepth.length - 1)];
+
+  return (
+    <ul className={`${listClass} text-sm text-slate-800`}>
+      {items.map((it, idx) => {
+        // 1) Primitifs simples -> on affiche tel quel (string/number/bool)
+        if (typeof it === "string" || typeof it === "number" || typeof it === "boolean") {
+          return <li key={`${depth}-${idx}`}>{String(it)}</li>;
+        }
+
+        // 2) Tableaux -> sous-liste (ex: bullets: [ ["a","b"], ... ])
+        if (Array.isArray(it)) {
+          return (
+            <li key={`${depth}-${idx}`}>
+              {renderBulletItems(it, depth + 1)}
+            </li>
+          );
+        }
+
+        // 3) Objets -> peut avoir { title?, items? }
+        if (it && typeof it === "object") {
+          const title = "title" in it ? it.title : undefined;
+          const sub = "items" in it ? it.items : undefined;
+
+          return (
+            <li key={`${depth}-${idx}`} className="space-y-1">
+              {title && (
+                <div className={`font-medium ${depth === 0 ? "text-slate-900 mt-1" : "text-slate-700"}`}>
+                  {String(title)}
+                </div>
+              )}
+              {isNonEmptyArray(sub) ? (
+                <div className="mt-1">{renderBulletItems(sub, depth + 1)}</div>
+              ) : null}
+            </li>
+          );
+        }
+
+        // 4) Fallback générique (null/undefined/symbol/function etc.)
+        return <li key={`${depth}-${idx}`}>{String(it)}</li>;
+      })}
+    </ul>
+  );
+}
+
+/* -----------------------------------------
+   Modal
+------------------------------------------ */
 function useOnEscape(onClose) {
   useEffect(() => {
     const h = (e) => e.key === "Escape" && onClose();
@@ -30,15 +102,22 @@ function Modal({ open, onClose, project }) {
   const panelRef = useRef(null);
   useEffect(() => { if (open) panelRef.current?.focus(); }, [open]);
 
+  const skillsText = Array.isArray(project?.skills) ? project.skills.join(" · ") : "";
+  const normalizedBullets = useMemo(() => {
+    try { return asArray(project?.bullets); } catch { return []; }
+  }, [project?.bullets]);
+
   return (
     <AnimatePresence>
       {open && (
         <>
+          {/* Backdrop */}
           <motion.div
             className="fixed inset-0 z-50 bg-black/40"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
           />
+          {/* Panel centré */}
           <motion.div
             className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] px-4"
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
@@ -46,17 +125,25 @@ function Modal({ open, onClose, project }) {
             exit={{ opacity: 0, y: 6, scale: 0.98 }}
           >
             <div
-              ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true"
-              className="w-full max-w-2xl rounded-xl border border-slate-200 bg-white shadow-xl outline-none"
+              ref={panelRef}
+              tabIndex={-1}
+              role="dialog"
+              aria-modal="true"
+              className="
+                w-full max-w-2xl rounded-xl border border-slate-200 bg-white shadow-xl outline-none
+                max-h-[80vh] flex flex-col
+              "
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-start justify-between px-4 py-3 border-b border-slate-200">
+              {/* Header (fixe) */}
+              <div className="flex items-start justify-between px-4 py-3 border-b border-slate-200 shrink-0">
                 <div className="min-w-0">
-                  <p className="font-semibold text-slate-900 truncate">{project?.title}</p>
-                  {(project?.subtitle || project?.skills?.length) && (
+                  <p className="font-semibold text-slate-900 truncate">
+                    {project?.title ?? "Détails du projet"}
+                  </p>
+                  {(project?.subtitle || skillsText) && (
                     <p className="mt-0.5 text-xs text-slate-500 truncate">
-                      {project?.subtitle}
-                      {project?.skills?.length ? ` — ${project.skills.join(" · ")}` : ""}
+                      {project?.subtitle}{project?.subtitle && skillsText ? " — " : ""}{skillsText}
                     </p>
                   )}
                 </div>
@@ -69,26 +156,38 @@ function Modal({ open, onClose, project }) {
                 </button>
               </div>
 
-              <div className="px-4 py-4">
-                {project?.summary && <p className="text-sm text-slate-700 mb-3">{project.summary}</p>}
-                {project?.bullets?.length ? (
-                  <ul className="list-disc pl-5 space-y-1.5 text-sm text-slate-800">
-                    {project.bullets.map((b, i) => <li key={i}>{b}</li>)}
-                  </ul>
+              {/* Contenu scrollable */}
+              <div className="
+                px-4 py-4 overflow-y-auto grow
+                [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2
+                [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full
+                [&::-webkit-scrollbar-track]:bg-transparent
+              ">
+                {project?.summary && (
+                  <p className="text-sm text-slate-700 mb-3">{String(project.summary)}</p>
+                )}
+
+                {isNonEmptyArray(normalizedBullets) ? (
+                  <div>{renderBulletItems(normalizedBullets)}</div>
                 ) : (
                   <p className="text-sm text-slate-500">Pas de détails supplémentaires.</p>
                 )}
+
                 {(project?.github || project?.demo) && (
                   <div className="mt-4 flex items-center gap-3">
-                    {project.github && (
-                      <a className="inline-flex items-center gap-1 text-sm text-slate-700 hover:text-slate-900"
-                         href={project.github} target="_blank" rel="noopener noreferrer">
+                    {project?.github && (
+                      <a
+                        className="inline-flex items-center gap-1 text-sm text-slate-700 hover:text-slate-900"
+                        href={project.github} target="_blank" rel="noopener noreferrer"
+                      >
                         <Github className="h-4 w-4" /> Code
                       </a>
                     )}
-                    {project.demo && (
-                      <a className="inline-flex items-center gap-1 text-sm text-slate-700 hover:text-slate-900"
-                         href={project.demo} target="_blank" rel="noopener noreferrer">
+                    {project?.demo && (
+                      <a
+                        className="inline-flex items-center gap-1 text-sm text-slate-700 hover:text-slate-900"
+                        href={project.demo} target="_blank" rel="noopener noreferrer"
+                      >
                         <ExternalLink className="h-4 w-4" /> Demo
                       </a>
                     )}
@@ -103,9 +202,11 @@ function Modal({ open, onClose, project }) {
   );
 }
 
-/* --------- Card (entièrement cliquable) --------- */
+
+/* -----------------------------------------
+   Card (entièrement cliquable)
+------------------------------------------ */
 function ProjectCard({ p, onOpen }) {
-  // activation clavier: Enter/Space
   const onKey = (e) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
@@ -120,11 +221,11 @@ function ProjectCard({ p, onOpen }) {
       onKeyDown={onKey}
       role="button"
       tabIndex={0}
-      aria-label={`Ouvrir les détails du projet ${p.title}`}
+      aria-label={`Ouvrir les détails du projet ${p?.title ?? ""}`}
       className="relative group cursor-pointer rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-400 transition"
     >
-      {/* Image côté droit + dégradé vers blanc */}
-      {p.image && (
+      {/* Image à droite + dégradé vers le blanc */}
+      {p?.image && (
         <div
           className="absolute inset-0 z-0"
           style={{
@@ -138,37 +239,44 @@ function ProjectCard({ p, onOpen }) {
 
       <div className="relative z-10 p-4">
         <header className="mb-2">
-          <h3 className="text-base font-semibold text-slate-900 line-clamp-2">{p.title}</h3>
-          {p.subtitle && (
-            <p className="mt-1 text-[13px] text-slate-500 line-clamp-2">{p.subtitle}</p>
+          <h3 className="text-base font-semibold text-slate-900 line-clamp-2">{String(p?.title ?? "")}</h3>
+          {p?.subtitle && (
+            <p className="mt-1 text-[13px] text-slate-500 line-clamp-2">{String(p.subtitle)}</p>
           )}
         </header>
 
-        {p.summary && <p className="text-sm text-slate-700 line-clamp-3">{p.summary}</p>}
+        {p?.summary && <p className="text-sm text-slate-700 line-clamp-3">{String(p.summary)}</p>}
 
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {p.skills.map((s) => (
-            <span key={s} className="rounded-md bg-white/70 border border-slate-200 px-2 py-0.5 text-[11px] text-slate-700 backdrop-blur-sm">
-              {s}
+          {asArray(p?.skills).map((s, i) => (
+            <span
+              key={`${s}-${i}`}
+              className="rounded-md bg-white/70 border border-slate-200 px-2 py-0.5 text-[11px] text-slate-700 backdrop-blur-sm"
+            >
+              {String(s)}
             </span>
           ))}
         </div>
 
-        {(p.github || p.demo) && (
+        {(p?.github || p?.demo) && (
           <div className="mt-4 flex items-center gap-3">
-            {p.github && (
-              <a className="inline-flex items-center gap-1 text-sm text-slate-700 hover:text-slate-900"
-                 href={p.github} target="_blank" rel="noopener noreferrer"
-                 onClick={(e) => e.stopPropagation()}
-                 onKeyDown={(e) => e.stopPropagation()}>
+            {p?.github && (
+              <a
+                className="inline-flex items-center gap-1 text-sm text-slate-700 hover:text-slate-900"
+                href={p.github} target="_blank" rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+              >
                 <Github className="h-4 w-4" /> Code
               </a>
             )}
-            {p.demo && (
-              <a className="inline-flex items-center gap-1 text-sm text-slate-700 hover:text-slate-900"
-                 href={p.demo} target="_blank" rel="noopener noreferrer"
-                 onClick={(e) => e.stopPropagation()}
-                 onKeyDown={(e) => e.stopPropagation()}>
+            {p?.demo && (
+              <a
+                className="inline-flex items-center gap-1 text-sm text-slate-700 hover:text-slate-900"
+                href={p.demo} target="_blank" rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+              >
                 <ExternalLink className="h-4 w-4" /> Demo
               </a>
             )}
@@ -182,15 +290,17 @@ function ProjectCard({ p, onOpen }) {
   );
 }
 
-/* --------- Grid + filtres --------- */
+/* -----------------------------------------
+   Grid + filtres
+------------------------------------------ */
 export default function ProjectsGrid({ projects = [] }) {
   const [selected, setSelected] = useState(new Set());
   const [modalProject, setModalProject] = useState(null);
 
   const allSkills = useMemo(() => {
     const s = new Set();
-    projects.forEach((p) => p.skills.forEach((k) => s.add(k)));
-    return Array.from(s).sort((a, b) => a.localeCompare(b));
+    projects.forEach((p) => asArray(p?.skills).forEach((k) => s.add(k)));
+    return Array.from(s).sort((a, b) => String(a).localeCompare(String(b)));
   }, [projects]);
 
   const toggleSkill = (skill) => {
@@ -200,10 +310,12 @@ export default function ProjectsGrid({ projects = [] }) {
   };
   const clearFilters = () => setSelected(new Set());
 
+  // Filtrage logique AND (toutes les compétences sélectionnées doivent être présentes)
   const filtered = useMemo(() => {
     if (selected.size === 0) return projects;
     return projects.filter((p) => {
-      for (const sk of selected) if (!p.skills.includes(sk)) return false;
+      const skills = new Set(asArray(p?.skills));
+      for (const sk of selected) if (!skills.has(sk)) return false;
       return true;
     });
   }, [projects, selected]);
@@ -239,8 +351,8 @@ export default function ProjectsGrid({ projects = [] }) {
         <div className="mb-6 flex flex-wrap gap-2">
           <Pill active={selected.size === 0} onClick={clearFilters}>Tout</Pill>
           {allSkills.map((skill) => (
-            <Pill key={skill} active={selected.has(skill)} onClick={() => toggleSkill(skill)}>
-              {skill}
+            <Pill key={String(skill)} active={selected.has(skill)} onClick={() => toggleSkill(skill)}>
+              {String(skill)}
             </Pill>
           ))}
         </div>
@@ -248,7 +360,7 @@ export default function ProjectsGrid({ projects = [] }) {
         {/* Grille responsive */}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((p) => (
-            <ProjectCard key={p.id ?? p.title} p={p} onOpen={setModalProject} />
+            <ProjectCard key={p.id ?? p.title ?? Math.random()} p={p} onOpen={setModalProject} />
           ))}
         </div>
 
