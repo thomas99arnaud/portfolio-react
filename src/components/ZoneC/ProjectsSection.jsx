@@ -249,7 +249,8 @@ function ProjectCard({ p, onOpen }) {
       role="button"
       tabIndex={0}
       aria-label={`Ouvrir les détails du projet ${p?.title ?? ""}`}
-      className="relative group cursor-pointer rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-400 transition"
+      className="relative group cursor-pointer rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-400 transition
+                flex-none w-[260px] sm:w-[300px] md:w-[340px] snap-start"
     >
       {/* Image à droite + dégradé vers le blanc */}
       {p?.image && (
@@ -502,10 +503,22 @@ export default function ProjectsGrid({ projects = [] }) {
           />
         </div>
 
-        {/* Grille responsive */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {/* Carrousel horizontal de cards */}
+        <div
+          className="
+            flex gap-4 overflow-x-auto py-2 snap-x snap-mandatory
+            [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2
+            [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full
+            [&::-webkit-scrollbar-track]:bg-transparent
+          "
+          style={{ width: "100%" }}
+        >
           {sorted.map((p) => (
-            <ProjectCard key={p.id ?? p.title ?? Math.random()} p={p} onOpen={setModalProject} />
+            <ProjectCard
+              key={p.id ?? p.title ?? Math.random()}
+              p={p}
+              onOpen={setModalProject}
+            />
           ))}
         </div>
 
