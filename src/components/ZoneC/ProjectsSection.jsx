@@ -1,7 +1,37 @@
 // components/ZoneC/ProjectsGrid.jsx
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import { Github, ExternalLink, Filter, X } from "lucide-react";
+import { Github, ExternalLink, Filter, X, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+
+/* -----------------------------------------
+   Catégories -> compétences (listes déroulantes)
+   (basé sur ta liste; dédoublonné et groupé)
+------------------------------------------ */
+const CATEGORIES = {
+  "Langages": [
+    "Python","Java","JavaScript","PHP","SQL","HTML","CSS"
+  ],
+  "Data / ML": [
+    "Data Science","Analyse statistique","ACP","K-Means","Scikit-learn","Pandas","NumPy","Numpy",
+    "Seaborn","Matplotlib","Deep Learning","TensorFlow","PyTorch","Image Segmentation","U-Net","SegNet",
+    "Data Augmentation","Dice Loss","Focal Loss","Reinforcement Learning","DDPG","CMA-ES","Optimization","AI Safety"
+  ],
+  "Back-end / API": [
+    "API","API REST","Node.js","Tomcat","Swagger","Event Handling","Jar Packaging"
+  ],
+  "Web / CMS / SEO / UX": [
+    "WordPress","WooCommerce","Joomla","SEO","UX/UI","Design","Communication","Accompagnement","Maitenance","Maintenance","Documentation technique"
+  ],
+  "DevOps / Infra / DB": [
+    "AzureDevOps","Docker","Pipelines","Serveurs","Hébergement","DNS","SSL","Git","PostgreSQL","Cache","OSRM"
+  ],
+  "Architecture / Modèles": [
+    "Architecture logicielle","UML","MVC","POO","Full-Stack","Swing","Discord.js","RiveScript","Streamlit"
+  ],
+  "Spécialités domaine": [
+    "Geopandas","Environnement","Simulation","SegNet","U-Net","Image Segmentation"
+  ],
+};
 
 /* -----------------------------------------
    UI helpers
@@ -19,6 +49,20 @@ function Pill({ active, children, onClick }) {
   );
 }
 
+function SectionToggle({ title, open, onToggle }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="w-full flex items-center justify-between rounded-md border border-slate-300 bg-white px-3 py-2 text-left hover:bg-slate-50"
+      aria-expanded={open}
+    >
+      <span className="font-medium text-slate-800">{title}</span>
+      <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+    </button>
+  );
+}
+
 /* -----------------------------------------
    Utils sécurisés
 ------------------------------------------ */
@@ -27,15 +71,10 @@ const asArray = (v) => (Array.isArray(v) ? v : v == null ? [] : [v]);
 
 /* -----------------------------------------
    Bullets hiérarchiques robustes
-   Accepte :
-   - ["point", ...]
-   - [{ title, items: [...] }, ...]
-   - Tableaux imbriqués, mélanges, etc.
 ------------------------------------------ */
 function renderBulletItems(items, depth = 0) {
   if (!Array.isArray(items) || items.length === 0) return null;
 
-  // On limite à 3 niveaux pour garder une bonne lisibilité
   const listStyleByDepth = [
     "list-disc pl-5 space-y-1.5",
     "list-[circle] pl-5 space-y-1",
@@ -46,21 +85,12 @@ function renderBulletItems(items, depth = 0) {
   return (
     <ul className={`${listClass} text-sm text-slate-800`}>
       {items.map((it, idx) => {
-        // 1) Primitifs simples -> on affiche tel quel (string/number/bool)
         if (typeof it === "string" || typeof it === "number" || typeof it === "boolean") {
           return <li key={`${depth}-${idx}`}>{String(it)}</li>;
         }
-
-        // 2) Tableaux -> sous-liste (ex: bullets: [ ["a","b"], ... ])
         if (Array.isArray(it)) {
-          return (
-            <li key={`${depth}-${idx}`}>
-              {renderBulletItems(it, depth + 1)}
-            </li>
-          );
+          return <li key={`${depth}-${idx}`}>{renderBulletItems(it, depth + 1)}</li>;
         }
-
-        // 3) Objets -> peut avoir { title?, items? }
         if (it && typeof it === "object") {
           const title = "title" in it ? it.title : undefined;
           const sub = "items" in it ? it.items : undefined;
@@ -78,8 +108,6 @@ function renderBulletItems(items, depth = 0) {
             </li>
           );
         }
-
-        // 4) Fallback générique (null/undefined/symbol/function etc.)
         return <li key={`${depth}-${idx}`}>{String(it)}</li>;
       })}
     </ul>
@@ -202,7 +230,6 @@ function Modal({ open, onClose, project }) {
   );
 }
 
-
 /* -----------------------------------------
    Card (entièrement cliquable)
 ------------------------------------------ */
@@ -240,14 +267,22 @@ function ProjectCard({ p, onOpen }) {
       <div className="relative z-10 p-4">
         <header className="mb-2">
           <h3 className="text-base font-semibold text-slate-900 line-clamp-2">{String(p?.title ?? "")}</h3>
-          {p?.subtitle && (
-            <p className="mt-1 text-[13px] text-slate-500 line-clamp-2">{String(p.subtitle)}</p>
-          )}
         </header>
 
-        {p?.summary && <p className="text-sm text-slate-700 line-clamp-3">{String(p.summary)}</p>}
+        {p?.subtitle && (
+          <p className="mt-1 text-[13px] text-slate-500 line-clamp-2">{String(p.subtitle)}</p>
+        )}
+        {p?.summary && <p className="mt-1.5 text-sm text-slate-700 line-clamp-3">{String(p.summary)}</p>}
 
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        {/* Compétences scrollables */}
+        <div
+          className="
+            mt-3 flex flex-wrap gap-1.5 max-h-14 overflow-y-auto pr-1
+            [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2
+            [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full
+            [&::-webkit-scrollbar-track]:bg-transparent
+          "
+        >
           {asArray(p?.skills).map((s, i) => (
             <span
               key={`${s}-${i}`}
@@ -286,8 +321,119 @@ function ProjectCard({ p, onOpen }) {
 
       {/* voile doux au hover */}
       <div className="absolute inset-0 z-0 bg-gradient-to-l from-white/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-    </motion.article>
+    
+    {/* Badges banner + year */}
+      <div className="absolute bottom-2 right-2 flex gap-1">
+        {p?.banner && (
+          <span
+            className={`px-2 py-0.5 rounded-md text-[10px] font-medium text-white ${
+              p.banner === "pro" ? "bg-blue-600" : "bg-emerald-600"
+            }`}
+          >
+            {p.banner}
+          </span>
+        )}
+        {p?.years && (
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-800 text-white">
+            {p.years}
+          </span>
+        )}
+      </div>
+      </motion.article>
   );
+  
+}
+
+/* -----------------------------------------
+   Panneau de filtres (listes déroulantes)
+------------------------------------------ */
+function FilterDropdowns({ selected, onToggle, onClear, onSelectOnly, allSkillsFromData }) {
+  // Dédoublonner et ajouter "Autres" si des skills ne sont pas mappées
+  const categorized = useMemo(() => {
+    const setAll = new Set(allSkillsFromData);
+    const fromCategories = new Set(
+      Object.values(CATEGORIES).flat().map((x) => (x === "Numpy" ? "NumPy" : x)) // normalisation "Numpy" -> "NumPy"
+    );
+    const others = [...setAll].filter((s) => !fromCategories.has(s));
+    return { others };
+  }, [allSkillsFromData]);
+
+  const [openMap, setOpenMap] = useState(() => {
+    const init = {};
+    Object.keys(CATEGORIES).forEach((k) => (init[k] = false));
+    init["Autres"] = false;
+    return init;
+  });
+
+  const toggleSection = (k) => setOpenMap((m) => ({ ...m, [k]: !m[k] }));
+
+  const Section = ({ name, skills }) => {
+    if (!skills || skills.length === 0) return null;
+    // Dédoublonner + trier
+    const uniq = Array.from(new Set(skills.map((s) => (s === "Numpy" ? "NumPy" : s)))).sort((a, b) =>
+      a.localeCompare(b)
+    );
+
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white">
+        <SectionToggle title={name} open={openMap[name]} onToggle={() => toggleSection(name)} />
+        <AnimatePresence initial={false}>
+          {openMap[name] && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="
+                overflow-hidden px-3 pt-2 pb-3
+                max-h-40 overflow-y-auto
+                [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2
+                [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full
+                [&::-webkit-scrollbar-track]:bg-transparent
+              "
+            >
+              <div className="flex flex-wrap gap-2">
+                {uniq.map((skill) => (
+                  <Pill key={skill} active={selected.has(skill)} onClick={() => onToggle(skill)}>
+                    {skill}
+                  </Pill>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
+
+ return (
+    <div className="flex flex-nowrap gap-3 overflow-x-auto pb-2 items-center [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full">
+      <button
+        onClick={onClear}
+        className="shrink-0 inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm hover:bg-slate-50"
+      >
+        <X className="h-4 w-4" /> Tout
+      </button>
+      {Object.entries(CATEGORIES).map(([cat, skills]) => (
+            <div key={cat} className="relative shrink-0">
+        <select
+            onChange={(e) => {
+              const val = e.target.value;
+              if (!val) return;
+              onSelectOnly(val);     // remplace entièrement la sélection
+              e.target.value = "";   // revient sur l’entête de catégorie
+            }}
+        className="w-28 appearance-none border border-slate-300 bg-white rounded-md px-2 py-1.5 pr-6 text-[13px] text-slate-700 hover:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 leading-tight whitespace-normal break-words"
+         >
+           <option value="">{cat}</option>
+          {skills.map((s) => (
+             <option key={s} value={s}>{s}</option>
+            ))}
+         </select>
+        <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+      </div>
+     ))}
+   </div>
+);
 }
 
 /* -----------------------------------------
@@ -297,10 +443,11 @@ export default function ProjectsGrid({ projects = [] }) {
   const [selected, setSelected] = useState(new Set());
   const [modalProject, setModalProject] = useState(null);
 
-  const allSkills = useMemo(() => {
+  // Toutes les skills effectivement présentes dans les projets (pour "Autres")
+  const allSkillsFromData = useMemo(() => {
     const s = new Set();
-    projects.forEach((p) => asArray(p?.skills).forEach((k) => s.add(k)));
-    return Array.from(s).sort((a, b) => String(a).localeCompare(String(b)));
+    projects.forEach((p) => asArray(p?.skills).forEach((k) => s.add(String(k))));
+    return Array.from(s);
   }, [projects]);
 
   const toggleSkill = (skill) => {
@@ -309,57 +456,55 @@ export default function ProjectsGrid({ projects = [] }) {
     setSelected(copy);
   };
   const clearFilters = () => setSelected(new Set());
+  const selectOnly = (skill) => setSelected(skill ? new Set([skill]) : new Set());
 
   // Filtrage logique AND (toutes les compétences sélectionnées doivent être présentes)
   const filtered = useMemo(() => {
     if (selected.size === 0) return projects;
     return projects.filter((p) => {
-      const skills = new Set(asArray(p?.skills));
+      const skills = new Set(asArray(p?.skills).map(String));
       for (const sk of selected) if (!skills.has(sk)) return false;
       return true;
     });
   }, [projects, selected]);
-
+  // Tri par date décroissante (année)
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const ya = parseInt(a?.years) || 0;
+      const yb = parseInt(b?.years) || 0;
+      return yb - ya;
+    });
+  }, [filtered]);
   return (
     <section
       id="projects"
       className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] bg-white border-t border-slate-200"
     >
       <div className="mx-auto max-w-6xl px-4 py-12">
-        {/* Header + filtres */}
+        {/* Header */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-2xl md:text-3xl font-semibold text-slate-900">Projets</h2>
             <p className="mt-1 text-sm text-slate-500">
-              {filtered.length}/{projects.length} projet(s) — filtrable par compétences
+              {filtered.length}/{projects.length} projet(s) — filtre par catégories
             </p>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-slate-600">
-            <Filter className="h-4 w-4 text-slate-500" />
-            <span>Filtres actifs : {selected.size}</span>
-            {selected.size > 0 && (
-              <button
-                onClick={clearFilters}
-                className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 hover:bg-slate-50"
-              >
-                <X className="h-4 w-4" /> Réinitialiser
-              </button>
-            )}
           </div>
         </div>
 
-        <div className="mb-6 flex flex-wrap gap-2">
-          <Pill active={selected.size === 0} onClick={clearFilters}>Tout</Pill>
-          {allSkills.map((skill) => (
-            <Pill key={String(skill)} active={selected.has(skill)} onClick={() => toggleSkill(skill)}>
-              {String(skill)}
-            </Pill>
-          ))}
+        {/* Filtres par catégories (listes déroulantes) */}
+        <div className="mb-8">
+          <FilterDropdowns
+            selected={selected}
+            onToggle={toggleSkill}
+            onClear={clearFilters}
+            onSelectOnly={selectOnly}
+            allSkillsFromData={allSkillsFromData}
+          />
         </div>
 
         {/* Grille responsive */}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtered.map((p) => (
+          {sorted.map((p) => (
             <ProjectCard key={p.id ?? p.title ?? Math.random()} p={p} onOpen={setModalProject} />
           ))}
         </div>
