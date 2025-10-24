@@ -1,6 +1,6 @@
 export default {
   id: "p9",
-  years: "2022",
+  years: "2023",
   banner: "school",
   title: "Application de quiz en Java (interface graphique et POO)",
   subtitle: "Projet académique — Programmation orientée objet et interface Swing",

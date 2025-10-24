@@ -1,6 +1,6 @@
 export default {
   id: "p5",
-  years: "2023",
+  years: "2025",
   banner: "school",
   title: "Classification de données génomiques",
   subtitle: "Projet académique — Analyse exploratoire et modélisation statistique",

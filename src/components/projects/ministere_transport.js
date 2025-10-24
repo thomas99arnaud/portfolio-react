@@ -8,7 +8,7 @@ export default {
   summary: "Concevoir et déployer une application de modélisation du trafic cyclable à l’échelle de la ville de Montréal",
   skills: ["Python", "Pandas", "Numpy", "Geopandas", "Cache", "API", "Dev WEB", "AzureDevOps", "Git", "Pipelines", "Serveurs", "OSRM", "PostgreSQL", "Docker", "Streamlit", "Documentation technique"],
   image: "/assets/realtime.jpg",
-  github: "https://github.com/tonrepo/pipeline-realtime",
+  github: null,
   bullets: [
   {
     title: "Modélisation et automatisation du réseau cyclable de Montréal",

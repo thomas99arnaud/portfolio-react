@@ -8,7 +8,7 @@ export default {
     "Conception d’un modèle empirique de risque d’avalanche basé sur les données climatiques, topographiques et météorologiques, avec génération automatique et visualisation des cartes de risque.",
   skills: ["Python", "Matplotlib", "Numpy", "Data Science", "Simulation", "Environnement"],
   image: "/assets/avalanche.jpg",
-  github: null,
+  github: "https://github.com/thomas99arnaud/tipe-modele-avalanche",
   bullets: [ {
   title: "Modélisation du risque d’avalanche",
   items: [

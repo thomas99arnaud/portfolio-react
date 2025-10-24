@@ -1,6 +1,6 @@
 export default {
   id: "p6",
-  years: "2023",
+  years: "2025",
   banner: "school",
   title: "Clustering et visualisation des émotions",
   subtitle: "Projet académique — Analyse de données comportementales sur Twitter",

@@ -1,6 +1,6 @@
 export default {
   id: "p11",
-  years: "2022",
+  years: "2023",
   banner: "pro",
   title: "Site web professionnel pour un camping",
   subtitle: "Projet client — Développement WordPress et gestion de contenu",

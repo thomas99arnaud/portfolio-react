@@ -1,6 +1,6 @@
 export default {
   id: "p7",
-  years: "2023",
+  years: "2025",
   banner: "school",
   title: "Contrôle autonome de systèmes dynamiques (Lunar Lander)",
   subtitle: "Projet académique — Apprentissage par renforcement profond",

@@ -1,6 +1,6 @@
 export default {
   id: "p8",
-  years: "2023",
+  years: "2025",
   banner: "school",
   title: "Segmentation d’IRM cardiaques",
   subtitle: "Projet académique — Deep Learning pour l’imagerie médicale",
